@@ -1,0 +1,40 @@
+#page {
+	font-family: Helvetica-Neue,sans-serif;
+	height:100%;
+    width:100%;
+	position:absolute;
+    top:0;
+    left:0;
+    bottom:0;
+    right:0;
+	overflow: auto;
+	padding-top: 40px;
+}
+
+#board {
+	text-align:center;
+	border-collapse:collapse;
+	border-style: hidden;
+	pointer-events: none;
+	table-layout: fixed;
+}
+
+#board .row {
+	pointer-events: none;
+}
+
+#board .row .elem {
+  border: 5px solid black;
+  font-size: 1000%; 
+  pointer-events: none;
+}
+
+#board .row .elem .clickable {
+	pointer-events: all;
+	color: white;
+}
+
+#page .switch {
+	 position: absolute;
+	 left: 50%;
+}
