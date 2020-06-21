@@ -27,12 +27,12 @@ function addClickListenerToEachCell() {
 function dealWithUserMove(clickable) {
 	var id = clickable.target.id;
 
-	if (isValidMove(id))
+	if (isValidMove(id)) {
 		makeMove(id);
+		ifElseAI();
+	}
 	else
 		alert("Invalid move");
-
-	ifElseAI();
 }
 
 // A very simple `AI` that just picks the first possible move that's valid
