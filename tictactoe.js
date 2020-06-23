@@ -33,9 +33,6 @@ function renderBoardInHTML() {
 	var newCell;
 	var newSpan;
 
-	board.style.height = "60%"
-	board.style.width = "40%";
-
 	for (let i = 0; i < global.size; i++) {
 		newRow = document.createElement("tr");
 		newRow.className = "row";
