@@ -1,31 +1,128 @@
  "use strict";
 
-const size = 3;
 const board = [];
-var team = "X";
-var running = true;
 
-buildEmptyBoard();
-addClickListenerToEachCell();
+const global = {
+	team: "X",
+	running: true,
+	size: 3	
+}
+
+createNewGame();
+
+function createNewGame() {
+	buildEmptyBoard();
+	renderBoardInHTML();
+	addClickListenerToEachCell();
+	addChangeListenerForSizeToggle();
+	addClickListenerForResetGame();
+}
 
 // Initialise empty board dynamically based on size
 function buildEmptyBoard() {
-	for (let i = 0; i < size; i++) {
+	for (let i = 0; i < global.size; i++) {
 		board.push([]);
-		for (let j = 0; j < size; j++) 
+		for (let j = 0; j < global.size; j++) 
 			board[i].push(" ");		
 	}
 }
 
+function renderBoardInHTML() {
+	const board = document.querySelector("#board");
+	var newRow;
+	var newCell;
+	var newSpan;
+
+	board.style.height = "60%"
+	board.style.width = "40%";
+
+	for (let i = 0; i < global.size; i++) {
+		newRow = document.createElement("tr");
+		newRow.className = "row";
+
+		for (let j = 0; j < global.size; j++)  {
+			newCell = createCell();
+			newSpan = createSpan(i, j);	
+
+			newCell.append(newSpan);
+			newRow.append(newCell);
+		}
+
+		board.append(newRow);
+	}
+}	
+
+// Create element that lies in the tiles of the board
+function createCell() {
+	var newCell = document.createElement("td");
+
+	newCell.className = "elem";
+	newCell.style.fontSize = (3000 / global.size) + "%" 
+
+	return newCell;
+}
+
+// Create element that lies within a tile that registers the clicks and holds X's and O's
+function createSpan(i, j) {
+	var newSpan = document.createElement("span");
+
+	newSpan.className = "clickable";
+	newSpan.id = "r" + i + "c" + j;
+	newSpan.innerHTML = "W";
+
+	return newSpan;
+}
+
+// Add listener that registers the user placing X's and O's
 function addClickListenerToEachCell() {
-	var matches = document.querySelectorAll("#board .row .elem .clickable");
+	const matches = document.querySelectorAll("#board .row .elem .clickable");
 
 	for (let i = 0; i < matches.length; i++) 
 		matches[i].addEventListener("click", dealWithUserMove);
 }
 
+function addChangeListenerForSizeToggle() {
+	const slider = document.querySelector("#speed-toggle");
+
+	slider.addEventListener("change", updateSize);
+}
+
+function updateSize(sliderEvent) {
+	const slider = sliderEvent.target;
+
+	global.size = slider.value;
+
+	resetGame();
+}
+
+function addClickListenerForResetGame() {
+	const resetButton = document.querySelector("#reset-game");
+
+	resetButton.addEventListener("click", resetGame);
+}
+
+function resetGame() {
+	removeClickListenerFromEachCell();
+	resetHTML();
+	clearBoard();
+	createNewGame();
+
+	global.running = true;
+	global.team = "X";
+}
+
+function resetHTML() {
+	const board = document.querySelector("#board");
+
+	board.innerHTML = '';
+}
+
+function clearBoard() {
+	board.length = 0;
+}
+
 function dealWithUserMove(clickable) {
-	var id = clickable.target.id;
+	const id = clickable.target.id;
 
 	if (isValidMove(id)) {
 		makeMove(id);
@@ -35,10 +132,10 @@ function dealWithUserMove(clickable) {
 		alert("Invalid move");
 }
 
-// A very simple `AI` that just picks the first possible move that's valid
+// A very simple "AI" that just picks the first possible move that's valid
 function simpleAIMove() {
-	for (let i = 0; i < size; i++) {
-		for (let j = 0; j < size; j++) {
+	for (let i = 0; i < global.size; i++) {
+		for (let j = 0; j < global.size; j++) {
 			if (board[i][j] == " ") {
 				makeMove(convertCoordinatesToID(i, j));
 				return;
@@ -55,10 +152,8 @@ function ifElseAI() {
 	var negDiagonal;
 	var openCorner;
 
-	if (running) {
-		if (boardHasOpenCenter() && board[getCenter()][getCenter()] == " ")
-			makeMove(convertCoordinatesToID(getCenter(), getCenter()));		
-		else if ((twoInRow = checkForTwoInRows()) != undefined) 
+	if (global.running) {		
+		if ((twoInRow = checkForTwoInRows()) != undefined) 
 			makeMove(convertCoordinatesToID(twoInRow[0], twoInRow[1]));
 		else if ((twoInColumn = checkForTwoInColumns()) != undefined) 
 			makeMove(convertCoordinatesToID(twoInColumn[0], twoInColumn[1]));
@@ -73,20 +168,11 @@ function ifElseAI() {
 	}
 }
 
-// Returns true if the board is an odd size and the center is empty
-function boardHasOpenCenter() {
-	return size % 2 != 0 && board[getCenter()][getCenter()] == " ";
-}
-
-function getCenter() {
-	return ((size + 1) / 2) - 1;
-}
-
 // Check for the case where 2 pieces of the same team are one move away from winning. Scans through every row
 function checkForTwoInRows() {
 	var missingRow;
 	
-	for (let i = 0; i < size; i++) 
+	for (let i = 0; i < global.size; i++) 
 		if ((missingRow = checkForTwoInSpecificRow(i)) != undefined)
 			return [i, missingRow];	
 
@@ -99,8 +185,8 @@ function checkForTwoInSpecificRow(j) {
 	var emptySpace = -1;
 	var opponentCounter = 0;
 
-	for (let i = 0; i < size; i++) {
-		if (board[j][i] == team)
+	for (let i = 0; i < global.size; i++) {
+		if (board[j][i] == global.team)
 			teamCounter++;
 		else if (board[j][i] == " ")
 			emptySpace = i;		
@@ -108,7 +194,7 @@ function checkForTwoInSpecificRow(j) {
 			opponentCounter++; 
 	}
 
-	if ((teamCounter == size - 1 || opponentCounter == size - 1) && emptySpace != -1)
+	if ((teamCounter == global.size - 1 || opponentCounter == Math.floor(global.size / 2) + 1) && emptySpace != -1)
 		return emptySpace;
 	else
 		return undefined;
@@ -118,7 +204,7 @@ function checkForTwoInSpecificRow(j) {
 function checkForTwoInColumns() {
 	var missingColumn;
 
-	for (let i = 0; i < size; i++) 
+	for (let i = 0; i < global.size; i++) 
 		if ((missingColumn = checkForTwoInSpecificColumn(i)) != undefined)
 			return [missingColumn, i];
 
@@ -131,8 +217,8 @@ function checkForTwoInSpecificColumn(j) {
 	var emptySpace = -1;
 	var opponentCounter = 0;
 
-	for (let i = 0; i < size; i++) {
-		if (board[i][j] == team)
+	for (let i = 0; i < global.size; i++) {
+		if (board[i][j] == global.team)
 			teamCounter++;
 		else if (board[i][j] == " ")
 			emptySpace = i;		
@@ -140,7 +226,7 @@ function checkForTwoInSpecificColumn(j) {
 			opponentCounter++; 
 	}
 
-	if ((teamCounter == size - 1 || opponentCounter == size - 1) && emptySpace != -1)
+	if ((teamCounter == global.size - 1 || opponentCounter == Math.floor(global.size / 2) + 1) && emptySpace != -1)
 		return emptySpace;
 	else
 		return undefined;
@@ -149,12 +235,12 @@ function checkForTwoInSpecificColumn(j) {
 function checkForOpenCorner() {
 	if (board[0][0] == " ")
 		return [0, 0];
-	else if (board[0][size - 1] == " ")
-		return [0, size - 1];
-	else if (board[size - 1][size - 1] == " ")
-		return [size - 1, size - 1];
-	else if (board[size - 1][0] == " ")
-		return [size - 1, 0];
+	else if (board[0][global.size - 1] == " ")
+		return [0, global.size - 1];
+	else if (board[global.size - 1][global.size - 1] == " ")
+		return [global.size - 1, global.size - 1];
+	else if (board[global.size - 1][0] == " ")
+		return [global.size - 1, 0];
 
 	return undefined;
 }
@@ -165,8 +251,8 @@ function checkForPosGradDiagonal() {
 	var emptySpace = -1;
 	var opponentCounter = 0;
 
-	for (let i = 0; i < size; i++) {
-		if (board[i][i] == team)
+	for (let i = 0; i < global.size; i++) {
+		if (board[i][i] == global.team)
 			teamCounter++;
 		else if (board[i][i] == " ")
 			emptySpace = i;		
@@ -174,7 +260,7 @@ function checkForPosGradDiagonal() {
 			opponentCounter++; 
 	}
 
-	if ((teamCounter == size - 1 || opponentCounter == size - 1) && emptySpace != -1)
+	if ((teamCounter == global.size - 1 || opponentCounter == Math.floor(global.size / 2) + 1) && emptySpace != -1)
 		return [emptySpace, emptySpace];
 	else
 		return undefined;
@@ -186,16 +272,16 @@ function checkForNegGradDiagonal() {
 	var emptySpace = -1;
 	var opponentCounter = 0;
 
-	for (let i = 0; i < size; i++) 
-		if (board[size - 1 - i][i] == team)
+	for (let i = 0; i < global.size; i++) 
+		if (board[global.size - 1 - i][i] == global.team)
 			teamCounter++;
-		else if (board[size - 1 - i][i] == " ")
+		else if (board[global.size - 1 - i][i] == " ")
 			emptySpace = i;		
 		else
 			opponentCounter++; 
 
-	if ((teamCounter == size - 1 || opponentCounter == size - 1) && emptySpace != -1)
-		return [size - emptySpace -1, emptySpace];
+	if ((teamCounter == global.size - 1 || opponentCounter == Math.floor(global.size / 2) + 1) && emptySpace != -1)
+		return [global.size - emptySpace -1, emptySpace];
 	else
 		return undefined;
 }
@@ -220,27 +306,27 @@ function makeMove(id) {
 // If game has finished, clean up and alert the appropriate message
 function detectGameOver(id) {
 	if (isWinner(id)) {
-		alert("Team " + team + " has won!");
-		running = false;
+		alert("Team " + global.team + " has won!");
+		global.running = false;
 		removeClickListenerFromEachCell();
 	}
 	else if (isStalemate()) {
-		alert("Game ended in statemate");
-		running = false;
+		alert("Game ended in stalemate");
+		global.running = false;
 		removeClickListenerFromEachCell();
 	}
 }
 
 function removeClickListenerFromEachCell() {
-	var matches = document.querySelectorAll("#board .row .elem .clickable");
+	const matches = document.querySelectorAll("#board .row .elem .clickable");
 
 	for (let i = 0; i < matches.length; i++) 
 		matches[i].removeEventListener("click", dealWithUserMove);
 }
 
 function isStalemate() {
-	for (let i = 0; i < size; i++) 
-		for (let j = 0; j < size; j++) 
+	for (let i = 0; i < global.size; i++) 
+		for (let j = 0; j < global.size; j++) 
 			if (board[i][j] == " ") 
 				return false;			
 
@@ -257,25 +343,25 @@ function isSidewaysWinner(id) {
 	var column = 0;
 	var row = 0;
 
-	for (let i = 0; i < size; i++) {
-		if (board[getRowFromID(id)][i] == team)
+	for (let i = 0; i < global.size; i++) {
+		if (board[getRowFromID(id)][i] == global.team)
 			column++;
-		if (board[i][getColumnFromID(id)] == team)
+		if (board[i][getColumnFromID(id)] == global.team)
 			row++;
 	}
 
-	return row == size || column == size;
+	return row == global.size || column == global.size;
 }
 
 function isDiagonalWinner(id) {
 	var posGradient = true;
 	var negGradient = true;
 
-	for (let i = 1; i < size; i++) {
+	for (let i = 1; i < global.size; i++) {
 		if (board[i][i] != board[i - 1][i - 1] || board[i - 1][i - 1] == " ")
 			posGradient = false;
 
-		if (board[size - 1 - i][i] != board[size - i][i - 1] || board[size - i][i - 1] == " ")
+		if (board[global.size - 1 - i][i] != board[global.size - i][i - 1] || board[global.size - i][i - 1] == " ")
 			negGradient = false;
 	}
 
@@ -283,26 +369,51 @@ function isDiagonalWinner(id) {
 }
 
 function switchTeam() {
-	if (team == "X")
-		team = "O"
+	if (global.team == "X")
+		global.team = "O"
 	else 
-		team = "X"
+		global.team = "X"
 }
 
 function updateBoardWithMove(id) {
-	board[getRowFromID(id)][getColumnFromID(id)] = team;
+	board[getRowFromID(id)][getColumnFromID(id)] = global.team;
 }
 
 function updateViewWithMove(id) {
-	var cell = document.querySelector("#board .row .elem #" + id);
-	cell.innerHTML = team;
+	const cell = document.querySelector("#board .row .elem #" + id);
+	cell.innerHTML = global.team;
 	cell.style.color = "black";
 }
 
+// Parses string ID and returns and numerical value for row
 function getRowFromID(id) {
-	return parseInt(id.charAt(1));
+	var strNum = "";
+
+	for (let i = 1; isCharDigit(id.charAt(i)); i++)
+		strNum = strNum.concat(id.charAt(i));
+
+	return parseInt(strNum);
 }
 
+// Parses string ID and returns and numerical value for column
 function getColumnFromID(id) {
-	return parseInt(id.charAt(3));
+	var strNum = "";
+
+	for (let i = id.length - 1; isCharDigit(id.charAt(i)); i--)
+		strNum = strNum.concat(id.charAt(i));
+
+	return parseInt(reverseStr(strNum));
+}
+
+// Helper function for parsers
+function isCharDigit(c) {
+	var zeroAscii = "0".charCodeAt(0);
+	var nineAscii = "9".charCodeAt(0);
+
+	return c.charCodeAt() >= zeroAscii && c <= nineAscii;
+}
+
+// Helper function for parsers
+function reverseStr(str) {
+	return str.split("").reverse().join("");
 }
