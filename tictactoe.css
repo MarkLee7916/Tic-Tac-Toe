@@ -1,12 +1,12 @@
 #page {
 	font-family: Helvetica-Neue,sans-serif;
 	height:100%;
-    width:100%;
+    	width:100%;
 	position:absolute;
-    top:0;
-    left:0;
-    bottom:0;
-    right:0;
+    	top:0;
+    	left:0;
+    	bottom:0;
+    	right:0;
 	overflow: auto;
 }
 
@@ -25,22 +25,22 @@ header::before, header::after {
 }
 
 .menu-text {
-  padding: 10px;
-  font-size: 16px;
-  color: white;
+  	padding: 10px;
+  	font-size: 16px;
+  	color: white;
 }
 
 .menu-button {
-  border: none;
-  background-color: black;
-  font-size: 16px;
-  color: white;
-  cursor: pointer;
-  outline: none;
+  	border: none;
+  	background-color: black;
+  	font-size: 16px;
+  	color: white;
+  	cursor: pointer;
+  	outline: none;
 }
 
 .menu-button:hover {
-  opacity: 0.8;
+  	opacity: 0.8;
 }
 
 #reset-game {
@@ -55,10 +55,11 @@ header::before, header::after {
 }
 
 .elem {
-  border: 5px solid black;
+  	border: 5px solid black;
 }
 
 .clickable {
 	color: white;
+	cursor: pointer;
 }
 
