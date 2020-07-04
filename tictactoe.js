@@ -13,9 +13,7 @@ createNewGame();
 function createNewGame() {
 	buildEmptyBoard();
 	renderBoardInHTML();
-	addClickListenerToEachCell();
-	addChangeListenerForSizeToggle();
-	addClickListenerForResetGame();
+	addEventListeners();
 }
 
 // Initialise empty board dynamically based on size
@@ -25,6 +23,12 @@ function buildEmptyBoard() {
 		for (let j = 0; j < global.size; j++) 
 			board[i].push(" ");		
 	}
+}
+
+function addEventListeners() {
+	addClickListenerToEachCell();
+	addChangeListenerForSizeToggle();
+	addClickListenerForResetGame();
 }
 
 function renderBoardInHTML() {
@@ -79,7 +83,7 @@ function addClickListenerToEachCell() {
 }
 
 function addChangeListenerForSizeToggle() {
-	const slider = document.querySelector("#speed-toggle");
+	const slider = document.querySelector("#size-toggle");
 
 	slider.addEventListener("change", updateSize);
 }
@@ -87,7 +91,7 @@ function addChangeListenerForSizeToggle() {
 function updateSize(sliderEvent) {
 	const slider = sliderEvent.target;
 
-	global.size = slider.value;
+	global.size = parseInt(slider.value);
 
 	resetGame();
 }
@@ -128,159 +132,128 @@ function dealWithUserMove(clickable) {
 	else
 		alert("Invalid move");
 }
-
-// A very simple "AI" that just picks the first possible move that's valid
-function simpleAIMove() {
-	for (let i = 0; i < global.size; i++) {
-		for (let j = 0; j < global.size; j++) {
-			if (board[i][j] == " ") {
-				makeMove(convertCoordinatesToID(i, j));
-				return;
-			}
-		}
-	}
-}
-
+		
 // A rule based AI that breaks game down into different cases
 function ifElseAI() {
-	var twoInRow;
-	var twoInColumn;
+	var twoInStraight;
 	var posDiagonal;
 	var negDiagonal;
 	var openCorner;
 
 	if (global.running) {		
-		if ((twoInRow = checkForTwoInRows()) != undefined) 
-			makeMove(convertCoordinatesToID(twoInRow[0], twoInRow[1]));
-		else if ((twoInColumn = checkForTwoInColumns()) != undefined) 
-			makeMove(convertCoordinatesToID(twoInColumn[0], twoInColumn[1]));
-		else if ((posDiagonal = checkForPosGradDiagonal()) != undefined) 
+		if ((twoInStraight = checkForOrthogonalHole()) != undefined) {
+			makeMove(convertCoordinatesToID(twoInStraight[0], twoInStraight[1]));
+		}
+		else if ((posDiagonal = checkForDiagonalHole(i => i, i => i)) != undefined) {
 			makeMove(convertCoordinatesToID(posDiagonal[0], posDiagonal[1]));
-		else if ((negDiagonal = checkForNegGradDiagonal()) != undefined) 
+		}
+		else if ((negDiagonal = checkForDiagonalHole(i => global.size - 1 - i, i => i)) != undefined) {
 			makeMove(convertCoordinatesToID(negDiagonal[0], negDiagonal[1]));	
-		else if ((openCorner = checkForOpenCorner()) != undefined) 
+		}
+		else if ((openCorner = checkForOpenCorner()) != undefined) {
 			makeMove(convertCoordinatesToID(openCorner[0], openCorner[1]));	
+		}
 		else 
-			simpleAIMove();
+			randomMove();
 	}
+}
+
+function randomMove() {
+	var possibleMoves = getArrayOfEmptyCells();
+	var move = possibleMoves[rng(0, possibleMoves.length)];
+
+	makeMove(convertCoordinatesToID(move[0], move[1]));
+}
+
+function getArrayOfEmptyCells() {
+	var emptyCells = [];
+
+	for (let i = 0; i < global.size; i++) 
+		for (let j = 0; j < global.size; j++) 
+			if (board[i][j] === " ")
+				emptyCells.push([i, j]);
+
+	return emptyCells;
+}
+
+// Generates a random number whose value lies between lower and upper
+function rng(lower, upper) {
+	return Math.floor(Math.random() * (upper - lower)) + lower;
 }
 
 // Check for the case where 2 pieces of the same team are one move away from winning. Scans through every row
-function checkForTwoInRows() {
-	var missingRow;
-	
-	for (let i = 0; i < global.size; i++) 
-		if ((missingRow = checkForTwoInSpecificRow(i)) != undefined)
+function checkForOrthogonalHole() {
+	for (let i = 0; i < global.size; i++)  {
+		let missingRow = checkForHole(i, (i, j) => board[j][i])
+		let missingColumn = checkForHole(i, (i, j) => board[i][j]);
+
+		if (missingRow != undefined)
 			return [i, missingRow];	
+		if (missingColumn != undefined)
+			return [missingColumn, i];
+	}
 
 	return undefined;
 }
 
-// Check for the case where 2 pieces of the same team are one move away from winning. Checks this for a specific row
-function checkForTwoInSpecificRow(j) {
+// Check for the case where 2 pieces of the same team are one move away from winning
+function checkForHole(j, getOrderBoardAccess) {
 	var teamCounter = 0;
 	var emptySpace = -1;
 	var opponentCounter = 0;
 
 	for (let i = 0; i < global.size; i++) {
-		if (board[j][i] == global.team)
+		if (getOrderBoardAccess(i, j) === global.team)
 			teamCounter++;
-		else if (board[j][i] == " ")
+		else if (getOrderBoardAccess(i, j) === " ")
 			emptySpace = i;		
 		else
 			opponentCounter++; 
 	}
 
-	if ((teamCounter == global.size - 1 || opponentCounter == Math.floor(global.size / 2) + 1) && emptySpace != -1)
+	if (holeCondition(teamCounter, opponentCounter, emptySpace))
 		return emptySpace;
 	else
 		return undefined;
 }
 
-// Check for the case where 2 pieces of the same team are one move away from winning. Scans through every column
-function checkForTwoInColumns() {
-	var missingColumn;
+// Check for the case where 2 pieces of the same team are one move away from winning for a diagonal
+function checkForDiagonalHole(rowAccess, colAccess) {
+	var teamCounter = 0;
+	var emptySpace = -1;
+	var opponentCounter = 0;
 
 	for (let i = 0; i < global.size; i++) 
-		if ((missingColumn = checkForTwoInSpecificColumn(i)) != undefined)
-			return [missingColumn, i];
-
-	return undefined;
-}
-
-// Check for the case where 2 pieces of the same team are one move away from winning. Checks this for a specific column
-function checkForTwoInSpecificColumn(j) {
-	var teamCounter = 0;
-	var emptySpace = -1;
-	var opponentCounter = 0;
-
-	for (let i = 0; i < global.size; i++) {
-		if (board[i][j] == global.team)
+		if (board[rowAccess(i)][colAccess(i)] === global.team)
 			teamCounter++;
-		else if (board[i][j] == " ")
+		else if (board[rowAccess(i)][colAccess(i)] === " ")
 			emptySpace = i;		
 		else
 			opponentCounter++; 
-	}
 
-	if ((teamCounter == global.size - 1 || opponentCounter == Math.floor(global.size / 2) + 1) && emptySpace != -1)
-		return emptySpace;
+	if (holeCondition(teamCounter, opponentCounter, emptySpace))
+		return [rowAccess(emptySpace), colAccess(emptySpace)];
 	else
 		return undefined;
+}
+
+function holeCondition(teamCounter, opponentCounter, emptySpace) {
+	const fillHoleCondition = Math.floor(global.size / 2) + 1;
+
+	return (teamCounter === global.size - 1 || opponentCounter >= fillHoleCondition) && emptySpace != -1;
 }
 
 function checkForOpenCorner() {
-	if (board[0][0] == " ")
+	if (board[0][0] === " ")
 		return [0, 0];
-	else if (board[0][global.size - 1] == " ")
+	else if (board[0][global.size - 1] === " ")
 		return [0, global.size - 1];
-	else if (board[global.size - 1][global.size - 1] == " ")
+	else if (board[global.size - 1][global.size - 1] === " ")
 		return [global.size - 1, global.size - 1];
-	else if (board[global.size - 1][0] == " ")
+	else if (board[global.size - 1][0] === " ")
 		return [global.size - 1, 0];
 
 	return undefined;
-}
-
-// Check for the case where 2 pieces of the same team are one move away from winning. Checks this for the positive gradient diagonal
-function checkForPosGradDiagonal() {
-	var teamCounter = 0;
-	var emptySpace = -1;
-	var opponentCounter = 0;
-
-	for (let i = 0; i < global.size; i++) {
-		if (board[i][i] == global.team)
-			teamCounter++;
-		else if (board[i][i] == " ")
-			emptySpace = i;		
-		else
-			opponentCounter++; 
-	}
-
-	if ((teamCounter == global.size - 1 || opponentCounter == Math.floor(global.size / 2) + 1) && emptySpace != -1)
-		return [emptySpace, emptySpace];
-	else
-		return undefined;
-}
-
-// Check for the case where 2 pieces of the same team are one move away from winning. Checks this for the negative gradient diagonal
-function checkForNegGradDiagonal() {
-	var teamCounter = 0;
-	var emptySpace = -1;
-	var opponentCounter = 0;
-
-	for (let i = 0; i < global.size; i++) 
-		if (board[global.size - 1 - i][i] == global.team)
-			teamCounter++;
-		else if (board[global.size - 1 - i][i] == " ")
-			emptySpace = i;		
-		else
-			opponentCounter++; 
-
-	if ((teamCounter == global.size - 1 || opponentCounter == Math.floor(global.size / 2) + 1) && emptySpace != -1)
-		return [global.size - emptySpace -1, emptySpace];
-	else
-		return undefined;
 }
 
 // Given 2 co-ordinates, convert to a string ID that the html will understand
@@ -289,7 +262,7 @@ function convertCoordinatesToID(i, j) {
 }
 
 function isValidMove(id) {
-	return board[getRowFromID(id)][getColumnFromID(id)] == " ";
+	return board[getRowFromID(id)][getColumnFromID(id)] === " ";
 }
 
 function makeMove(id) {
@@ -324,7 +297,7 @@ function removeClickListenerFromEachCell() {
 function isStalemate() {
 	for (let i = 0; i < global.size; i++) 
 		for (let j = 0; j < global.size; j++) 
-			if (board[i][j] == " ") 
+			if (board[i][j] === " ") 
 				return false;			
 
 	return true;
@@ -341,24 +314,26 @@ function isSidewaysWinner(id) {
 	var row = 0;
 
 	for (let i = 0; i < global.size; i++) {
-		if (board[getRowFromID(id)][i] == global.team)
+		if (board[getRowFromID(id)][i] === global.team)
 			column++;
-		if (board[i][getColumnFromID(id)] == global.team)
+		if (board[i][getColumnFromID(id)] === global.team)
 			row++;
-	}
+		}
 
-	return row == global.size || column == global.size;
+	return row === global.size || column === global.size;
 }
 
+
+// Return true if move resulted in a diagonal win
 function isDiagonalWinner(id) {
 	var posGradient = true;
 	var negGradient = true;
 
 	for (let i = 1; i < global.size; i++) {
-		if (board[i][i] != board[i - 1][i - 1] || board[i - 1][i - 1] == " ")
+		if (board[i][i] != board[i - 1][i - 1] || board[i - 1][i - 1] === " ")
 			posGradient = false;
 
-		if (board[global.size - 1 - i][i] != board[global.size - i][i - 1] || board[global.size - i][i - 1] == " ")
+		if (board[global.size - 1 - i][i] != board[global.size - i][i - 1] || board[global.size - i][i - 1] === " ")
 			negGradient = false;
 	}
 
@@ -366,7 +341,7 @@ function isDiagonalWinner(id) {
 }
 
 function switchTeam() {
-	if (global.team == "X")
+	if (global.team === "X")
 		global.team = "O"
 	else 
 		global.team = "X"
